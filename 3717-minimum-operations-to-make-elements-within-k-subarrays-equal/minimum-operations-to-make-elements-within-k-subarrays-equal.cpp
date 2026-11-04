@@ -1,124 +1,106 @@
+
+//Approach (Sliding Window)
+//T.C : O(n log x + n * k)
+//S.C : O(n*k)
 class Solution {
 public:
+    int n, x, k;
 
-    vector<long long> slidingWindowMoves(vector<int>& nums, int X) {
+    long long minOpsSubarray[100001];
+    //minOpsSubarray[i] = min operations reauired to make all elements of subarray[i...i+x-1] as equal
 
-    vector<long long> cost;
+    long long memo[16][100001];
 
-    multiset<int> left, right;
-    long long sumLeft = 0, sumRight = 0;
-
-    auto balance = [&]() {
-        int target = (left.size() + right.size() + 1) / 2;
-
-        while (left.size() > target) {
-            int val = *left.rbegin();
-
-            left.erase(prev(left.end()));
-            sumLeft -= val;
-
-            right.insert(val);
-            sumRight += val;
-        }
-
-        while (left.size() < target) {
-            int val = *right.begin();
-
-            right.erase(right.begin());
-            sumRight -= val;
-
-            left.insert(val);
-            sumLeft += val;
-        }
-    };
-
-    auto add = [&](int val) {
-        if (left.empty() || val <= *left.rbegin()) {
-            left.insert(val);
-            sumLeft += val;
-        }
-        else {
-            right.insert(val);
-            sumRight += val;
-        }
-
-        balance();
-    };
-
-    auto remove = [&](int val) {
-        auto it = left.find(val);
-
-        if (it != left.end()) {
-            left.erase(it);
-            sumLeft -= val;
-        }
-        else {
-            it = right.find(val);
-            right.erase(it);
-            sumRight -= val;
-        }
-
-        balance();
-    };
-
-    int i = 0;
-
-    for (int j = 0; j < nums.size(); j++) {
-
-        add(nums[j]);
-
-        if (j - i + 1 == X) {
-
-            long long median = *left.rbegin();
-
-            long long moves =
-                median * left.size() - sumLeft +
-                sumRight - median * right.size();
-
-            cost.push_back(moves);
-
-            remove(nums[i]);
-            i++;
-        }
-    }
-
-    return cost;
-}
-
-    long long solve(vector<long long>& cost, int index,
-                    int x, int k,
-                    vector<vector<long long>>& dp) {
-
-        if (k == 0)
+    long long solve(int count, int i) {
+        if(count == k)
             return 0;
+        
+        int subArraysNeeded = k-count;
+        int elementsNeeded  = subArraysNeeded*x;
+        int lastIndex       = i + elementsNeeded - 1;
 
-        if (index >= cost.size())
-            return LLONG_MAX / 2;
+        if(lastIndex >= n) {
+            return 1e16; //10^16
+        }
 
-        if (dp[index][k] != -1)
-            return dp[index][k];
+        if(memo[count][i] != -1) {
+            return memo[count][i];
+        }
 
-        // TAKE
-        long long take = cost[index] +
-            solve(cost, index + x, x, k - 1, dp);
+        //Took ith index as start of a subarray
+        long long result = minOpsSubarray[i] + solve(count+1, i+x);
 
-        // NOT TAKE
-        long long notTake =
-            solve(cost, index + 1, x, k, dp);
 
-        return dp[index][k] = min(take, notTake);
+        //Skip index i
+        result = min(result, solve(count, i+1));
+
+        return memo[count][i] = result;
+
     }
 
     long long minOperations(vector<int>& nums, int x, int k) {
+        this->n = nums.size();
+        this->x = x;
+        this->k = k;
 
-        vector<long long> cost = slidingWindowMoves(nums, x);
+        memset(memo, -1, sizeof(memo));
 
-        int m = cost.size();
+        multiset<int> left, right;
+        long long leftSum = 0, rightSum = 0;
 
-        vector<vector<long long>> dp(
-            m + 1, vector<long long>(k + 1, -1)
-        );
+        int i = 0;
+        int j = 0;
 
-        return solve(cost, 0, x, k, dp);
+        while(j < n) {
+            if(left.size() <= right.size()) {
+                left.insert(nums[j]);
+                leftSum += nums[j];
+            } else {
+                right.insert(nums[j]);
+                rightSum += nums[j];
+            }
+
+            //Balancing
+            if(!left.empty() && !right.empty()) {
+                int maxLeft  = *left.rbegin();
+                int minRight = *right.begin();
+
+                if(maxLeft > minRight) {
+                    left.erase(left.find(maxLeft));
+                    right.erase(right.find(minRight));
+
+                    left.insert(minRight);
+                    right.insert(maxLeft);
+
+                    leftSum += minRight - maxLeft;
+                    rightSum += maxLeft - minRight;
+                }
+            }
+
+            //If we have found the subarray of size x
+            if(j-i+1 == x) {
+                long long median = *left.rbegin();
+                long long leftSize = left.size();
+                long long rightSize = right.size();
+
+                minOpsSubarray[i] = (leftSize * median - leftSum) + (rightSum - rightSize*median);
+
+                if(left.find(nums[i]) != left.end()) {
+                    left.erase(left.find(nums[i]));
+                    leftSum -= nums[i];
+                } else {
+                    right.erase(right.find(nums[i]));
+                    rightSum -= nums[i];
+                }
+                i++;
+            }
+
+            j++;
+        }
+
+        return solve(0, 0); //recursion
     }
 };
+
+
+
