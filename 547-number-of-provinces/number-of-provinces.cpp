@@ -4,7 +4,7 @@ public:
     void dfs(unordered_map<int,vector<int>>& adj,vector<bool>& visited,int vertex){
         visited[vertex]=true;
 
-        for(int neighbor:adj[vertex]){
+        for(int &neighbor:adj[vertex]){
             if(!visited[neighbor]){
                 dfs(adj,visited,neighbor);
             }
